@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundo Documentos Sobre Soajo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+        }
+
+        .header {
+            background: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .filter-menu {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #ecf0f1;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover {
+            background: #bdc3c7;
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .gallery-item {
+            background: transparent;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.02);
+        }
+
+        .gallery-item.hidden {
+            display: none;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border: none;
+            vertical-align: top;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #e74c3c;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Documentação Sobre Soajo</h1>
+    </div>
+
+    <div class="filter-menu" id="filterMenu">
+        <button class="filter-btn active" data-category="all">Geral</button>
+    </div>
+
+    <div class="loading" id="loading">A carregar imagem...</div>
+    <div class="error" id="error" style="display: none;">Falha ao carregar imagens</div>
+
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        // Auto-detect images from GitHub repository
+        async function fetchImagesFromGitHub() {
+            try {
+                // Get current repository info from URL
+                const currentUrl = window.location.href;
+                const githubMatch = currentUrl.match(/https:\/\/([^.]+)\.github\.io\/([^\/]+)/);
+                
+                if (githubMatch) {
+                    const [, username, repo] = githubMatch;
+                    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/img`;
+                    
+                    const response = await fetch(apiUrl);
+                    if (response.ok) {
+                        const files = await response.json();
+                        const imageFiles = files
+                            .filter(file => file.type === 'file' && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(file.name))
+                            .map(file => ({
+                                file: file.name,
+                                category: categorizeFromFilename(file.name)
+                            }));
+                        
+                        console.log('Auto-detected images from GitHub:', imageFiles);
+                        return imageFiles;
+                    }
+                }
+            } catch (error) {
+                console.warn('GitHub API detection failed:', error);
+            }
+            
+            // Fallback for local development or when GitHub API fails
+            return [
+                { file: 'history_castle.jpg', category: 'history' },
+                { file: 'history_monument.jpg', category: 'history' },
+                { file: 'nature_forest.jpg', category: 'nature' },
+                { file: 'nature_landscape.jpg', category: 'nature' },
+                { file: 'nature_wildlife.jpg', category: 'nature' },
+                { file: 'sports_action.jpg', category: 'sports' },
+                { file: 'sports_running.jpg', category: 'sports' },
+                { file: 'sports_soccer.jpg', category: 'sports' }
+            ];
+        }
+
+        let currentFilter = 'all';
+
+        function categorizeFromFilename(filename) {
+            const name = filename.toLowerCase();
+            if (name.includes('Serra de Soajo') || name.includes('cortelhos') || name.includes('floresta') || name.includes('caça')) {
+                return 'Serra de Soajo';
+            }
+            if (name.includes('Soajo') || name.includes('história') || name.includes('montaria') || name.includes('lugares')) {
+                return 'Soajo';
+            }
+            if (name.includes('Mapas') || name.includes('geografia') || name.includes('toponimia')) {
+                return 'Mapas';
+            }
+            return 'outros';
+        }
+
+        function createFilterMenu(images) {
+            const categories = ['all', ...new Set(images.map(img => img.category))];
+            const filterMenu = document.getElementById('filterMenu');
+            
+            filterMenu.innerHTML = '';
+            
+            categories.forEach(category => {
+                const button = document.createElement('button');
+                button.className = 'filter-btn';
+                button.dataset.category = category;
+                button.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+                
+                if (category === 'all') {
+                    button.classList.add('active');
+                }
+                
+                button.addEventListener('click', () => filterImages(category));
+                filterMenu.appendChild(button);
+            });
+        }
+
+        function filterImages(category) {
+            currentFilter = category;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-category="${category}"]`).classList.add('active');
+            
+            document.querySelectorAll('.gallery-item').forEach(item => {
+                const itemCategory = item.dataset.category;
+                if (category === 'all' || itemCategory === category) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        }
+
+        function createGallery(images) {
+            const gallery = document.getElementById('gallery');
+            
+            images.forEach(imgData => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.dataset.category = imgData.category;
+                
+                const img = document.createElement('img');
+                img.src = `img/${imgData.file}`;
+                img.alt = imgData.file;
+                img.loading = 'lazy';
+                
+                img.onerror = () => {
+                    console.warn(`Failed to load: ${imgData.file}`);
+                    item.style.display = 'none';
+                };
+                
+                item.appendChild(img);
+                gallery.appendChild(item);
+            });
+        }
+
+        async function init() {
+            const images = await fetchImagesFromGitHub();
+            document.getElementById('loading').style.display = 'none';
+            createFilterMenu(images);
+            createGallery(images);
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
