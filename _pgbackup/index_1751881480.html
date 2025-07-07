@@ -300,16 +300,16 @@
 
         function categorizeFromFilename(filename) {
             const name = filename.toLowerCase();
-            if (name.includes('Serra de Soajo') || name.includes('cortelhos') || name.includes('floresta') || name.includes('caça')) {
-                return 'Serra de Soajo';
+            if (name.includes('nature') || name.includes('landscape') || name.includes('forest') || name.includes('wildlife')) {
+                return 'nature';
             }
-            if (name.includes('Soajo') || name.includes('história') || name.includes('montaria') || name.includes('lugares')) {
-                return 'Soajo';
+            if (name.includes('sport') || name.includes('action') || name.includes('running') || name.includes('soccer')) {
+                return 'sports';
             }
-            if (name.includes('Mapas') || name.includes('geografia') || name.includes('toponimia')) {
-                return 'Mapas';
+            if (name.includes('history') || name.includes('castle') || name.includes('monument')) {
+                return 'history';
             }
-            return 'outros';
+            return 'other';
         }
 
         function createFilterMenu(images) {
