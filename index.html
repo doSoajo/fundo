@@ -101,118 +101,15 @@
             font-size: 18px;
         }
 
-        /* Modal styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.95);
-        }
-
-        .modal-content {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-image {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 20px;
-            right: 30px;
-            color: white;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 1001;
-            transition: color 0.3s;
-        }
-
-        .modal-close:hover {
-            color: #ccc;
-        }
-
-        .modal-nav {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: none;
-            font-size: 30px;
-            padding: 15px 20px;
-            cursor: pointer;
-            border-radius: 50%;
-            transition: background-color 0.3s;
-            z-index: 1001;
-        }
-
-        .modal-nav:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .modal-prev {
-            left: 30px;
-        }
-
-        .modal-next {
-            right: 30px;
-        }
-
-        .modal-info {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
         @media (max-width: 768px) {
             .gallery {
                 grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            }
-            
-            .modal-nav {
-                font-size: 24px;
-                padding: 10px 15px;
-            }
-            
-            .modal-prev {
-                left: 15px;
-            }
-            
-            .modal-next {
-                right: 15px;
             }
         }
 
         @media (max-width: 480px) {
             .gallery {
                 grid-template-columns: 1fr;
-            }
-            
-            .modal-close {
-                font-size: 30px;
-                right: 20px;
-                top: 15px;
             }
         }
     </style>
@@ -231,72 +128,50 @@
 
     <div class="gallery" id="gallery"></div>
 
-    <!-- Modal for image viewing -->
-    <div class="modal" id="imageModal">
-        <div class="modal-content">
-            <span class="modal-close" id="modalClose">&times;</span>
-            <button class="modal-nav modal-prev" id="modalPrev">&#8249;</button>
-            <img class="modal-image" id="modalImage" src="" alt="">
-            <button class="modal-nav modal-next" id="modalNext">&#8250;</button>
-            <div class="modal-info" id="modalInfo"></div>
-        </div>
-    </div>
-
     <script>
-        // Try multiple methods to discover images
-        async function discoverImages() {
-            // Method 1: Try to fetch a known image list file
+        // Auto-detect images from GitHub repository
+        async function fetchImagesFromGitHub() {
             try {
-                const response = await fetch('./img-list.txt');
-                if (response.ok) {
-                    const text = await response.text();
-                    const imageFiles = text.split('\n')
-                        .filter(line => line.trim() && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(line))
-                        .map(filename => ({
-                            file: filename.trim(),
-                            category: categorizeFromFilename(filename.trim())
-                        }));
+                // Get current repository info from URL
+                const currentUrl = window.location.href;
+                const githubMatch = currentUrl.match(/https:\/\/([^.]+)\.github\.io\/([^\/]+)/);
+                
+                if (githubMatch) {
+                    const [, username, repo] = githubMatch;
+                    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/img`;
                     
-                    if (imageFiles.length > 0) {
-                        console.log('Loaded images from img-list.txt:', imageFiles);
+                    const response = await fetch(apiUrl);
+                    if (response.ok) {
+                        const files = await response.json();
+                        const imageFiles = files
+                            .filter(file => file.type === 'file' && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(file.name))
+                            .map(file => ({
+                                file: file.name,
+                                category: categorizeFromFilename(file.name)
+                            }));
+                        
+                        console.log('Auto-detected images from GitHub:', imageFiles);
                         return imageFiles;
                     }
                 }
             } catch (error) {
-                console.log('img-list.txt not found, trying other methods...');
+                console.warn('GitHub API detection failed:', error);
             }
-
-            // Method 2: Attempt common image names by trying to load them
-            const commonImages = [
-                'history_castle.jpg', 'history_monument.jpg', 'nature_forest.jpg',
-                'nature_landscape.jpg', 'nature_wildlife.jpg', 'sports_action.jpg',
-                'sports_running.jpg', 'sports_soccer.jpg'
-            ];
-
-            const existingImages = [];
             
-            for (const filename of commonImages) {
-                try {
-                    const response = await fetch(`img/${filename}`, { method: 'HEAD' });
-                    if (response.ok) {
-                        existingImages.push({
-                            file: filename,
-                            category: categorizeFromFilename(filename)
-                        });
-                    }
-                } catch (error) {
-                    // Image doesn't exist, skip it
-                }
-            }
-
-            console.log('Discovered existing images:', existingImages);
-            return existingImages;
+            // Fallback for local development or when GitHub API fails
+            return [
+                { file: 'history_castle.jpg', category: 'history' },
+                { file: 'history_monument.jpg', category: 'history' },
+                { file: 'nature_forest.jpg', category: 'nature' },
+                { file: 'nature_landscape.jpg', category: 'nature' },
+                { file: 'nature_wildlife.jpg', category: 'nature' },
+                { file: 'sports_action.jpg', category: 'sports' },
+                { file: 'sports_running.jpg', category: 'sports' },
+                { file: 'sports_soccer.jpg', category: 'sports' }
+            ];
         }
 
         let currentFilter = 'all';
-        let allImages = [];
-        let filteredImages = [];
-        let currentImageIndex = 0;
 
         function categorizeFromFilename(filename) {
             const name = filename.toLowerCase();
@@ -354,11 +229,10 @@
         function createGallery(images) {
             const gallery = document.getElementById('gallery');
             
-            images.forEach((imgData, index) => {
+            images.forEach(imgData => {
                 const item = document.createElement('div');
                 item.className = 'gallery-item';
                 item.dataset.category = imgData.category;
-                item.dataset.index = index;
                 
                 const img = document.createElement('img');
                 img.src = `img/${imgData.file}`;
@@ -370,113 +244,16 @@
                     item.style.display = 'none';
                 };
                 
-                // Add click event to open modal
-                item.addEventListener('click', () => {
-                    openModal(index);
-                });
-                
                 item.appendChild(img);
                 gallery.appendChild(item);
             });
         }
 
-        function openModal(imageIndex) {
-            updateFilteredImages();
-            const filteredIndex = filteredImages.findIndex(img => allImages.indexOf(img) === imageIndex);
-            if (filteredIndex !== -1) {
-                currentImageIndex = filteredIndex;
-                showModalImage();
-                document.getElementById('imageModal').style.display = 'block';
-                document.body.style.overflow = 'hidden';
-            }
-        }
-
-        function updateFilteredImages() {
-            if (currentFilter === 'all') {
-                filteredImages = [...allImages];
-            } else {
-                filteredImages = allImages.filter(img => img.category === currentFilter);
-            }
-        }
-
-        function showModalImage() {
-            if (filteredImages.length === 0) return;
-            
-            const currentImage = filteredImages[currentImageIndex];
-            const modalImage = document.getElementById('modalImage');
-            const modalInfo = document.getElementById('modalInfo');
-            
-            modalImage.src = `img/${currentImage.file}`;
-            modalImage.alt = currentImage.file;
-            modalInfo.textContent = `${currentImage.file} (${currentImageIndex + 1} of ${filteredImages.length})`;
-            
-            // Show/hide navigation buttons
-            document.getElementById('modalPrev').style.display = filteredImages.length > 1 ? 'block' : 'none';
-            document.getElementById('modalNext').style.display = filteredImages.length > 1 ? 'block' : 'none';
-        }
-
-        function closeModal() {
-            document.getElementById('imageModal').style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-
-        function nextImage() {
-            if (filteredImages.length <= 1) return;
-            currentImageIndex = (currentImageIndex + 1) % filteredImages.length;
-            showModalImage();
-        }
-
-        function prevImage() {
-            if (filteredImages.length <= 1) return;
-            currentImageIndex = (currentImageIndex - 1 + filteredImages.length) % filteredImages.length;
-            showModalImage();
-        }
-
         async function init() {
-            const images = await discoverImages();
-            allImages = images;
-            filteredImages = [...images];
-            
+            const images = await fetchImagesFromGitHub();
             document.getElementById('loading').style.display = 'none';
-            
-            if (images.length === 0) {
-                document.getElementById('error').style.display = 'block';
-                return;
-            }
-            
             createFilterMenu(images);
             createGallery(images);
-            setupModalEvents();
-        }
-
-        function setupModalEvents() {
-            // Close modal events
-            document.getElementById('modalClose').addEventListener('click', closeModal);
-            document.getElementById('imageModal').addEventListener('click', (e) => {
-                if (e.target.id === 'imageModal') closeModal();
-            });
-
-            // Navigation events
-            document.getElementById('modalNext').addEventListener('click', nextImage);
-            document.getElementById('modalPrev').addEventListener('click', prevImage);
-
-            // Keyboard navigation
-            document.addEventListener('keydown', (e) => {
-                const modal = document.getElementById('imageModal');
-                if (modal.style.display === 'block') {
-                    switch(e.key) {
-                        case 'Escape':
-                            closeModal();
-                            break;
-                        case 'ArrowRight':
-                            nextImage();
-                            break;
-                        case 'ArrowLeft':
-                            prevImage();
-                            break;
-                    }
-                }
-            });
         }
 
         // Start when page loads
